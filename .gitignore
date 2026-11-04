@@ -1,0 +1,11 @@
+/build/
+/dist/
+/JUCE/
+/out/
+*.user
+*.sln
+*.vcxproj*
+.DS_Store
+__pycache__/
+*.pyc
+.cache/

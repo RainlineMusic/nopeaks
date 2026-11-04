@@ -1,0 +1,28 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {"major": 3, "minor": 22, "patch": 0},
+  "configurePresets": [
+    {
+      "name": "core",
+      "displayName": "Core tests without JUCE",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/core",
+      "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug", "NOPEAKS_BUILD_PLUGINS": "OFF"}
+    },
+    {
+      "name": "release",
+      "displayName": "Master and Track VST3 release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/release",
+      "cacheVariables": {"CMAKE_BUILD_TYPE": "Release", "NOPEAKS_BUILD_PLUGINS": "ON"}
+    }
+  ],
+  "buildPresets": [
+    {"name": "core", "configurePreset": "core"},
+    {"name": "release", "configurePreset": "release"}
+  ],
+  "testPresets": [
+    {"name": "core", "configurePreset": "core", "output": {"outputOnFailure": true}},
+    {"name": "release", "configurePreset": "release", "output": {"outputOnFailure": true}}
+  ]
+}

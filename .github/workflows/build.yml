@@ -1,0 +1,68 @@
+name: Build and test NOPEAKS
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nopeaks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    name: Core tests and sanitizers
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure core tests
+        run: cmake -S . -B build/core -DCMAKE_BUILD_TYPE=Debug -DNOPEAKS_BUILD_PLUGINS=OFF -DNOPEAKS_SANITIZE=ON
+      - name: Build core tests
+        run: cmake --build build/core --parallel 2
+      - name: Test core
+        run: ctest --test-dir build/core --output-on-failure
+
+  plugins:
+    name: VST3 · ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            label: Windows-x64
+            cmake_args: -A x64
+          - os: macos-14
+            label: macOS-universal
+            cmake_args: -DCMAKE_OSX_ARCHITECTURES=arm64\;x86_64 -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+          - os: ubuntu-24.04
+            label: Linux-x64
+            cmake_args: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev libfreetype-dev libfontconfig1-dev libgl1-mesa-dev pkg-config xvfb xauth
+      - name: Configure
+        run: cmake -S . -B build/plugins -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_args }}
+      - name: Build both VST3s and standalone apps
+        run: cmake --build build/plugins --config Release --parallel 2
+      - name: Test
+        run: ctest --test-dir build/plugins -C Release --output-on-failure
+      - name: Package VST3 pair
+        run: python scripts/package.py --build-dir build/plugins --output dist/NOPEAKS-${{ matrix.label }}.zip
+      - name: Upload VST3 pair
+        uses: actions/upload-artifact@v4
+        with:
+          name: NOPEAKS-${{ matrix.label }}
+          path: dist/NOPEAKS-${{ matrix.label }}.zip
+          if-no-files-found: error
+          retention-days: 14
